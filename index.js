@@ -9,20 +9,23 @@ const multer = require("multer");
 const fs = require("fs");
 const axios = require("axios");
 const schedule = require("node-schedule");
-const mailer = require("nodemailer")
-
+const mailer = require("nodemailer");
+const bcrypt = require("bcrypt");
+const passport = require('passport');
+const passportConfig =require("./passport")
 
 // graphql 연결을 위한
 const {graphqlHTTP} = require("express-graphql")
 const graphqlSchema = require("./graphql/schema");
-const graphqlResolver = require("./graphql/resolvers")
+const graphqlResolver = require("./graphql/resolvers");
 
 
 const connect = require("./schemas");
-const Brand = require("./schemas/brand")
+const Brand = require("./schemas/brand");
 const rvCalculator = require("./schemas/revenueCalculator");
 const Pdtemplate = require("./schemas/pdTamplate");
 const BestSellerRank = require("./schemas/bestSellerRank");
+const Company = require("./schemas/company")
 
 require("dotenv").config();
 
@@ -52,7 +55,7 @@ const params = {
   }
 
 
-
+// 이미지 저장 시 저장 될 위치를 정하는 곳
 const uploadImg = multer({
     storage: multer.diskStorage({
         destination(req,file,cb){
@@ -69,6 +72,8 @@ const uploadImg = multer({
 
 
 app.set("port", process.env.PORT || 8082);
+
+passportConfig();
 
 app.use(morgan("dev"));
 app.use(express.static(path.join(__dirname, "public")));
@@ -157,6 +162,69 @@ app.post("/amz/amzProfit",async (req,res,next)=>{
     // .catch(error=>console.log("수익 계산기 저장 에러입니다."))
 
 })
+
+
+// 회사 이름으로 회원가입하기
+app.post("/auth/signUp", async (req,res,next)=>{
+    const {companyName, password, ceoName} = await req.body;
+
+    const hash = await bcrypt.hash(password, 12);
+    const signCompany = await new Company({
+        companyName:companyName,
+        password:hash,
+        ceoName:ceoName,
+    })
+    await signCompany.save()
+    .then(result=>{
+        console.log(result)
+        res.status(200).json({
+            result:true,
+        })
+    })
+    .catch(err=>{
+        console.log(err);
+        res.status(200).json({
+            result:false,
+        })
+    })
+})
+
+
+// 로그인 하는 곳
+app.post("/auth/login",(req,res,next)=>{
+    
+    passport.authenticate('local',(authError, user, info)=>{
+        if(authError){
+            console.log("authError",authError);
+            return next(authError);
+            // return '';
+        }
+        if(!user){
+            console.log("loginError", "loginError")
+            res.status(200).send("loginError");
+            return ' ';
+        }
+
+        return req.login(user , (loginError)=>{
+            if(loginError){
+                console.error("loginError 밑에 버전", loginError);
+                return next(loginError);
+                // return '' ;
+            }
+            return  res.status(200).json({
+                return : true,
+            })
+        })
+    })(req,res,next);
+})
+
+
+// 저장 잘 되었는지 확인하는 곳
+app.post("/test",(req,res)=>{
+    // console.log("++++++++++++++++++++++++++++++++",req)
+    console.log(req.session, req);
+    res.status(200).send("로그인이 성공적으로 완료되었습니다.");
+});
 
 // 아마존 수익 계산기
 app.post("/amz/amzPdTemplage",async (req,res,next)=>{
@@ -447,12 +515,12 @@ app.get("/bestSellerRanking", async (req,res)=>{
 })
 
 
-// 아마존 데이터 최신화를 위한
+// 아마존 데이터 특정 날짜 최신화를 위한
 async function lastestAmzBestSellerRankData () {
     try{
         console.log("lastestAmzBestSellerRankData 함수 실행")
         // 특정 날짜 시간마다 실행시키기
-        schedule.scheduleJob({hour : 00, minute:16, dayOfWeek: 1}, async function (){
+        await schedule.scheduleJob({hour : 00, minute:16, dayOfWeek: 1}, async function (){
 
         // 데이터 불러오기
         const getDBBestSellerRank = await BestSellerRank.find().exec();
@@ -479,7 +547,6 @@ async function lastestAmzBestSellerRankData () {
                         currCategory:i.current_category.name,
                         imgUrl:i.image,
                         sellerRank:i.rank,
-                        priceLower:i.price_lower.value,
                         priceUpper:i.price_upper.value,
                         productLink:i.link,
                     })
@@ -516,6 +583,12 @@ app.post('/img',uploadImg.single("imgFile"),(req,res)=>{
     console.log("내가 받아온 파일 확인",req.file,req.body)
     res.status(200).send("성공적으로 파일이 전송 완료되었습니다.")
 })
+
+app.use((req, res, next) => {
+    const err = new Error('Not Found');
+    err.status = 404;
+    next(err);
+  });
 
 
 // listen으로 실행되는 서버도 변수에 저장이 가능하다 그서버가 express server 즉 node서버 이다.

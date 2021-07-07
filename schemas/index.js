@@ -72,7 +72,8 @@ const mongoose = require("mongoose");
         require("./brand");
         require("./pdTamplate");
         require("./revenueCalculator");
-        require("./bestSellerRank")
+        require("./bestSellerRank");
+        require("./company");
     }
 
 
