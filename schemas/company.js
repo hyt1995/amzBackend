@@ -1,4 +1,6 @@
 const mongoose = require("mongoose");
+// 이것도 로그인 사용자 저장을 위해
+const passportLocalMongoose = require('passport-local-mongoose');
 
 const {Schema} = mongoose;
 const {Types: ObjectId} = Schema;
@@ -20,6 +22,9 @@ const {Types: ObjectId} = Schema;
          default: Date.now
      }
  });
+
+ // 로그인 사용자 세션에 저장을 위해 했지만 저장이 안된다.
+ companySchema.plugin(passportLocalMongoose, {usernameField: 'companyName'});
 
  module.exports = mongoose.model("Company", companySchema);
 
