@@ -50,10 +50,3 @@ npm i socket.io
 소켓 할때 꼭 알아야할 개념이 네임스페이이다.
 
 color-hash 패키지는 사용자가 익명이니 구분하기가 힘들다 사용자에게 색을 입혀줘서 구분하기 쉽게 해주는 패키지라고 한다.
-
-https://app.rainforestapi.com/playground
-youngtak
-Hanyoungtak1!
-
-자동 프레티어
-https://sunmon.github.io/vscode-eslint-prettier-setting/
