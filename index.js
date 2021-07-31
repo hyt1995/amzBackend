@@ -165,60 +165,62 @@ async function lastestAmzBestSellerRankData() {
 	try {
 		console.log('lastestAmzBestSellerRankData 함수 실행');
 		// 특정 날짜 시간마다 실행시키기
-		// await schedule.scheduleJob({hour : 00, minute:16, dayOfWeek: 1}, async function (){
-
-		// 데이터 불러오기
-		const getDBBestSellerRank = await BestSellerRank.find().exec();
-		// 데이터가 50개일 경우 기존 데이터 삭제
-		if (getDBBestSellerRank.length !== 0) {
-			const result = await Promise.all(
-				getDBBestSellerRank.map(i => {
-					BestSellerRank.deleteOne({ sellerRank: i.sellerRank });
-				})
-			).then(res => console.log('기존 데이터 삭제 완료'));
-		} else {
-			//데이터가 50개가 안될 경우
-			console.log('데이터에 문제가 있습니다. ');
-			return '';
-		}
-
-		//아마존에서 데이터를 가져오기
-		await axios
-			.get('https://api.rainforestapi.com/request', { params })
-			.then(async response => {
-				//데이터를 가져온뒤 저장하기
-				const resultSave = await Promise.all(
-					response.data.bestsellers.map(async i => {
-						const bestSellerRank = await new BestSellerRank({
-							asin: i.asin,
-							productName: i.title,
-							currCategory: i.current_category.name,
-							imgUrl: i.image,
-							sellerRank: i.rank,
-							priceUpper: i.price_upper.value,
-							productLink: i.link,
-						});
-						await bestSellerRank.save();
-					})
-				);
-				if (resultSave) {
-					const sendEmailResult = await mailSender.sendGmail(emailParam);
-					if (sendEmailResult) {
-						console.log('이메일이 보내졌습니다.');
-					} else {
-						console.log('이메일에 문제가 있어 취소되었습니다.');
-					}
+		await schedule.scheduleJob(
+			{ hour: 00, minute: 00, dayOfWeek: 1 },
+			async function () {
+				// 데이터 불러오기
+				const getDBBestSellerRank = await BestSellerRank.find().exec();
+				// 데이터가 50개일 경우 기존 데이터 삭제
+				if (getDBBestSellerRank.length !== 0) {
+					const result = await Promise.all(
+						getDBBestSellerRank.map(i => {
+							BestSellerRank.deleteOne({ sellerRank: i.sellerRank });
+						})
+					).then(res => console.log('기존 데이터 삭제 완료'));
 				} else {
-					console.log('문제가 있어 과정이 완료되지 않았습니다.');
+					//데이터가 50개가 안될 경우
+					console.log('데이터에 문제가 있습니다. ');
+					return '';
 				}
-			});
-		// });
+
+				//아마존에서 데이터를 가져오기
+				await axios
+					.get('https://api.rainforestapi.com/request', { params })
+					.then(async response => {
+						//데이터를 가져온뒤 저장하기
+						const resultSave = await Promise.all(
+							response.data.bestsellers.map(async i => {
+								const bestSellerRank = await new BestSellerRank({
+									asin: i.asin,
+									productName: i.title,
+									currCategory: i.current_category.name,
+									imgUrl: i.image,
+									sellerRank: i.rank,
+									priceUpper: i.price_upper.value,
+									productLink: i.link,
+								});
+								await bestSellerRank.save();
+							})
+						);
+						if (resultSave) {
+							const sendEmailResult = await mailSender.sendGmail(emailParam);
+							if (sendEmailResult) {
+								console.log('이메일이 보내졌습니다.');
+							} else {
+								console.log('이메일에 문제가 있어 취소되었습니다.');
+							}
+						} else {
+							console.log('문제가 있어 과정이 완료되지 않았습니다.');
+						}
+					});
+			}
+		);
 	} catch (error) {
 		console.log('에러가 있습니다.', error);
 	}
 }
 // 아마존 데이터 최신화를 위한 함수를 실행시킨다.
-// lastestAmzBestSellerRankData()
+lastestAmzBestSellerRankData();
 
 //////////////// single, array(여러개  단일 필드),fields(여러개  여러 필드),none(이미지 x)
 app.post('/img', uploadImg.single('imgFile'), (req, res) => {
